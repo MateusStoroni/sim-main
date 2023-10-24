@@ -43,10 +43,14 @@ public class App {
         alphaBank.addAccount(company.getCompanyAccount());
         alphaBank.addAccount(fuelStation.getFuelStationAccount());
 
-        for (int i = 0; i < 900; i++) {
+        
+
+        for (int i = 0; company.getRoutesQueue().size() < 900; i++) {
             String idRoute = Integer.toString(i);
-            company.addRouteToQueue(new Route(100, "Route " + i, "C:\\Users\\Mateus\\Desktop\\sim-main\\sim-main\\data\\dados2.xml", idRoute)); // adiciona 10 rotas à
-            // fila da empresa
+            Route route = new Route(100, "Route " + i, "C:\\Users\\Mateus\\Desktop\\sim-main\\sim-main\\data\\dados2.xml", idRoute);
+            if (route.getItinerary() != null) {
+                company.addRouteToQueue(route); // adiciona rota a empresa
+            }
         }
 
         for (int i = 0; i < 100; i++) {
@@ -57,7 +61,7 @@ public class App {
         company.start();
         fuelStation.start();
         // inicia a empresa
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 100; i++) {
             drivers.get(i).setMessageExchange(messageExchange); // adiciona o motorista à empresa
             drivers.get(i).start(); // inicia o motorista
             Thread.sleep(3000);
