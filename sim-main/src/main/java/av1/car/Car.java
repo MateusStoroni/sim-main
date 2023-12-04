@@ -2,12 +2,14 @@ package av1.car;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.UUID;
 
 import org.eclipse.sumo.libtraci.Simulation;
 import org.jfree.ui.RefineryUtilities;
 
 import au.com.bytecode.opencsv.CSVWriter;
+import av1.reconciliation.ReconciliationDataRetrieval;
 import av1.route.Route;
 import av1.utils.RealTimeChartDemo;
 import av1.utils.ReportGenerator;
@@ -36,7 +38,7 @@ public class Car extends Auto {
     private double distanceTraveled = 0.0;
     private double carFuelConsumption = 1.0;
     private int fuelType = 0;
-    private double carFuelTank = 10.0;
+    private double carFuelTank = 100.0;
     private double carCO2Emission = 0.0;
     private double carLongitude = 0.0;
     private double carLatitude = 0.0;
@@ -45,6 +47,7 @@ public class Car extends Auto {
     private boolean isStopped = false;
     private boolean isStarted = false;
     private RealTimeChartDemo realTimeChartDemo;
+    public ReconciliationDataRetrieval reconciliationDataRetrieval;
 
     public boolean isStarted() {
         return isStarted;
@@ -90,6 +93,17 @@ public class Car extends Auto {
         }
     }
 
+    public ArrayList<String> getCurrentEdges() {
+        ArrayList<String> edge = new ArrayList<String>();
+        edge.clear();
+        String[] aux = this.runningRoute.getItinerary();
+
+        for (String e : aux[1].split(" ")) {
+            edge.add(e);
+        }
+        return edge;
+    }
+
     private void checkCarMovement() {
         if (carStatus != CarStatus.RUNNING) {
             isStopped = true;
@@ -133,6 +147,7 @@ public class Car extends Auto {
     public boolean isStopped() {
         return isStopped;
     }
+
 
     private boolean isFuelLow() {
         return this.carFuelTank <= 3.0;

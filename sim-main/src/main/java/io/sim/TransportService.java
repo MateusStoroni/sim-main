@@ -39,7 +39,7 @@ public class TransportService extends Thread {
 					}
 				} catch (Exception e) {
 				}
-				Thread.sleep(100);
+				Thread.sleep(25);
 				if (this.getSumo().isClosed()) {
 					this.on_off = false;
 					this.auto.setOn_off(false); // turn off the car

@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import javax.crypto.SecretKey;
+import av1.reconciliation.Reconciliation;
+import av1.reconciliation.ReconciliationDataRetrieval;
 
 import av1.bank.Account;
 import av1.company.Company;
@@ -28,6 +30,10 @@ public class Driver extends Thread {
     private MessageExchange messageExchange; // troca de mensagens
     private SumoTraciConnection sumo;
     private SecretKey encryptionKey;
+    private ReconciliationDataRetrieval reconciliationDataRetrieval;
+    private ArrayList<double[]> reconciliationDistanceArrays = new ArrayList<double[]>();
+    private ArrayList<double[]> reconciliationTimeArrays = new ArrayList<double[]>();
+    private ArrayList<double[]> estimatedTimesArray = new ArrayList<double[]>();
     EncryptionUtil encryptionUtil = new EncryptionUtil();
 
     public Driver(String name, int balance, String password, Company company, BotPayment botPayment, Account account,
@@ -79,7 +85,7 @@ public class Driver extends Thread {
             e.printStackTrace();
         }
         try {
-            Thread.sleep(3000);
+            Thread.sleep(5000);
         } catch (InterruptedException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -144,6 +150,13 @@ public class Driver extends Thread {
 
     private void handleFinishedStatus() { // trata o status de finalizado
         Route route = this.driverRoutesInProgress.get(0); // pega a primeira rota em progresso
+        try {
+            Thread.sleep(1000);
+            reconciliateMeasuresAndAdd();
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
         completeRoute(route); // completa a rota
         requirePayment(driverCar.getDistanceTraveled()); // abre um requerimento de pagamento
         resetCarStatus(); // reseta o status do carro
@@ -223,6 +236,9 @@ public class Driver extends Thread {
             e.printStackTrace();
         }
         driverCar.setOn_off(true); // fala para a auto que ja está ligado
+        reconciliationDataRetrieval = new ReconciliationDataRetrieval(sumo, driverCar,
+                driverCar.getCurrentEdges());
+        reconciliationDataRetrieval.start();
         if (!driverCar.isStarted()) { // Checa se a Thread carro não está ativa
             driverCar.start(); // inicia a thread do carro
         }
@@ -303,6 +319,82 @@ public class Driver extends Thread {
 
     public void setMessageExchange(MessageExchange messageExchange) {
         this.messageExchange = messageExchange;
+    }
+    public ArrayList<double[]> getReconciliationDistanceArrays() {
+        return reconciliationDistanceArrays;
+    }
+
+    public ArrayList<double[]> getReconciliationTimeArrays() {
+        return reconciliationTimeArrays;
+    }
+
+    public ArrayList<double[]> getEstimatedTimesArray() {
+        return estimatedTimesArray;
+    }
+
+    public ArrayList<double[]> getReconciliationSpeedsArray() {
+        ArrayList<double[]> reconciliatedSpeeds = new ArrayList<double[]>();
+        for (int i = 0; i < reconciliationDistanceArrays.size(); i++) {
+            double[] speed = new double[reconciliationDistanceArrays.get(i).length];
+            for (int j = 0; j < reconciliationDistanceArrays.get(i).length; j++) {
+                speed[j] = reconciliationDistanceArrays.get(i)[j] / reconciliationTimeArrays.get(i)[j];
+            }
+            reconciliatedSpeeds.add(speed);
+        }
+        return reconciliatedSpeeds;
+    }
+
+    public void reconciliateMeasuresAndAdd() {
+        ArrayList<Double> timeMeasurements = reconciliationDataRetrieval.getTimeMeasurements();
+        ArrayList<Double> edgesDistances = reconciliationDataRetrieval.getEdgesDistances();
+        double[] timeMeasurementsArray = Reconciliation.arrayListToDouble(timeMeasurements);
+        double[] edgesDistancesArray = Reconciliation.arrayListToDouble(edgesDistances);
+        double[] v1 = Reconciliation.varianceArray(timeMeasurements.size());
+        double[] a1 = Reconciliation.incidenceMatrix(timeMeasurements.size());
+        double[] v2 = Reconciliation.varianceArray(edgesDistances.size());
+        double[] a2 = Reconciliation.incidenceMatrix(edgesDistances.size());
+
+        System.out.println();
+        System.out.println("timeMeasurementsArray (y1): ");
+        Reconciliation.printMatrix(timeMeasurementsArray);
+        System.out.println("time variance (v1): ");
+        Reconciliation.printMatrix(v1);
+        System.out.println("time incidence matrix (a1): ");
+        Reconciliation.printMatrix(a1);
+        System.out.println();
+        System.out.println("edgesDistancesArray (y2): ");
+        Reconciliation.printMatrix(edgesDistancesArray);
+        System.out.println("distance variance (v2): ");
+        Reconciliation.printMatrix(v2);
+        System.out.println("distance incidence matrix (a2): ");
+        Reconciliation.printMatrix(a2);
+
+        Reconciliation timeReconciliation = new Reconciliation(timeMeasurementsArray, v1, a1);
+        Reconciliation distanceReconciliation = new Reconciliation(edgesDistancesArray, v2, a2);
+        double[] timeReconciledFlow = timeReconciliation.getReconciledFlow();
+        System.out.println();
+        System.out.println("time reconciled flow: ");
+        Reconciliation.printMatrix(timeReconciledFlow);
+        System.out.println();
+        System.out.println("distance reconciled flow: ");
+        double[] distanceReconciledFlow = distanceReconciliation.getReconciledFlow();
+        Reconciliation.printMatrix(distanceReconciledFlow);
+        double totaltimereconciliated = 0.0;
+
+        for (int i = 1; i < timeReconciledFlow.length - 1; i++) {
+            totaltimereconciliated += timeReconciledFlow[i];
+        }
+        System.out.println("total time reconciliated: " + totaltimereconciliated);
+
+        double totaldistancereconciliated = 0.0;
+        for (int i = 1; i < distanceReconciledFlow.length - 1; i++) {
+            totaldistancereconciliated += distanceReconciledFlow[i];
+        }
+        System.out.println("total distance reconciliated: " + totaldistancereconciliated);
+
+        estimatedTimesArray.add(Reconciliation.arrayListToDouble(reconciliationDataRetrieval.getEdgesEstimatedTimes()));
+        reconciliationDistanceArrays.add(distanceReconciledFlow);
+        reconciliationTimeArrays.add(timeReconciledFlow);
     }
 
 }

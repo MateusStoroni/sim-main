@@ -6,6 +6,7 @@ import io.sim.DrivingData;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class CSVReportGenerator {
@@ -49,6 +50,38 @@ public class CSVReportGenerator {
 
             writer.close();
         } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public static void generateReconciliationCSV(String filename, CharSequence title, ArrayList<double[]> data) {
+        try {
+            FileWriter csvWriter = new FileWriter(filename + ".csv");
+
+            // Write title
+            csvWriter.append(title);
+            csvWriter.append("\n");
+
+            // Write column names
+            for (int i = 1; i < data.get(0).length - 1; i++) {
+                csvWriter.append("F" + (i + 1));
+                csvWriter.append(";");
+            }
+            csvWriter.append("\n");
+
+            for (double[] row : data) {
+                for (int i = 1; i < row.length - 1; i++) {
+                    csvWriter.append(String.valueOf(row[i]));
+                    csvWriter.append(";");
+                }
+                csvWriter.append("\n");
+            }
+
+            csvWriter.flush();
+            csvWriter.close();
+
+            System.out.println("CSV file created successfully!");
+        } catch (IOException e) {
+            System.out.println("Error while generating the CSV file.");
             e.printStackTrace();
         }
     }
